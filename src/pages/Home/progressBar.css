@@ -1,0 +1,22 @@
+:root{
+    --color1: #0c4a6e;
+    --color2: #c471ed;
+    --color3: #f64f59;
+}
+
+.circle-background{
+    fill: none;
+    stroke: #eff6ff;
+}
+
+.circle-progress{
+    fill:none;
+    stroke: var(--color1);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.circleText{
+    font-size: 2rem;
+    font-weight: bold;
+}
