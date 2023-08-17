@@ -1,5 +1,5 @@
 import axios from 'axios';
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense, lazy } from 'react'
 import {Link, json, useParams} from 'react-router-dom';
 import { LinearProgressBar } from './LinearProgressBar';
 import {LockOpenIcon, LockClosedIcon} from '@heroicons/react/24/outline';
@@ -39,7 +39,7 @@ const Day = ({ day }) => {
     const [isQuestionsVisible, setIsQuestionsVisible] = useState(false);
     const [arrowSign, setarrowSign] = useState("👇")
     const [isLocked, setIsLocked] = useState(true);
-    const [questionStatusResult, setQuestionStatusResult] = useState([]);
+    const [solvedQuestion, setSolvedQuestion] = useState(0);
 
     const handleClick = () => {
         setIsQuestionsVisible(!isQuestionsVisible);
@@ -47,26 +47,10 @@ const Day = ({ day }) => {
         else setarrowSign("👆");
       };
 
-
-    const userId = "User1";
-
-  // const UserStatus = async({questionId})=>{
-  //   const result=await axios.get(`http://localhost:8080/non/questionstatus/${questionId}/${userId}`);
-  //   setQuestionStatusResult(result.data);
-  //   return(
-  //     <>
-      
-  //     </>
-  //   );
-  // }
-
-  
-  
-
       const questionDetail = (
-        
         <div className="questionDetail mt-5">
           {day.questions.length > 0 ? (
+            
 
             <table className="table border-black shadow">
                 <th className='border-2 pl-3 pr-3'>Q. No.</th>
@@ -76,21 +60,12 @@ const Day = ({ day }) => {
                 <th className='border-2 pl-3 pr-3'>Note</th>
                 <th className='border-2 text-center'>Tags</th>
 
-                
-
 
             {day.questions.map((question, index) => (
               
-                <tr className='border-2'>
-                  {/* {
-                  <UserStatus questionId={question.questionId}/>
-                } */}
-                <th className='border-2' key={question.questionId}> {index+1}</th>
-                  <td className='border-2' >    </td>
-                  <td className='border-2 pl-2 pr-2'>{question.questionName}</td>
-                  <td className='border-2 text-center'><Link to={question.questionLink} target="blank"> 🔥 </Link></td>
-                  <td className='border-2'></td>
-                  <td className='border-2 pl-2 pr-2'>{question.tags.join(", ")}</td>
+              <tr className='border-2'>
+                  <UserQuestionDetail question={question} index={index} solvedQuestion = {solvedQuestion} setSolvedQuestion={setSolvedQuestion}/>
+
                 </tr>
             ))}
 
@@ -113,7 +88,7 @@ const Day = ({ day }) => {
         </div>
 
         <div className='flex place-content-end basis-1/3 ml-5 items-center '>
-        <LinearProgressBar  solvedQuestion={2} totalQuestion={day.questions.length} />
+        <LinearProgressBar  solvedQuestion={solvedQuestion} totalQuestion={day.questions.length} />
         {(day.isLock && (isLocked)) ? (
           <div className='flex pl-3 pr-3' style={{height:"30px"}}> <LockClosedIcon/></div>
         ) : (
@@ -125,9 +100,110 @@ const Day = ({ day }) => {
         
         </div> 
         
+        <Suspense
+      fallback={
+        <div className="flex justify-center items-center min-h-screen">
+          <h1>Loading ...</h1>
+          {/* <CircularProgress /> */}
+        </div>
+      }
+    >
         {/* Show the question when click the above button */}
         {isQuestionsVisible && !day.isLock && questionDetail }
+
+        </Suspense>
 
       </div>
     );
   };
+
+ 
+ //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+
+const UserQuestionDetail = ({question, index, solvedQuestion, setSolvedQuestion}) =>{
+  // questionId, setUserStatus, setUserNote
+  const [userStatus, setUserStatus] = useState("");
+  const [userNote, setUserNote] = useState("");
+  const qID=question.questionId;
+  // 
+
+  const userId ="User1";
+  const {id}=useParams();
+
+  //useEffect for tell what will done when the page is load.
+  useEffect(()=>{
+      loadDays();
+  },[]);
+
+
+
+  const loadDays=async()=>{
+      const result=await axios.get(`http://localhost:8080/non/questionstatus/${question.questionId}/${userId}`);
+      setUserStatus(result.data.status);
+      setUserNote(result.data.note);
+      if(userStatus==="Done"){
+        console.log(solvedQuestion);
+          setSolvedQuestion( solvedQuestion => solvedQuestion + 1 );
+        }
+  };
+
+  const handleChange = async(event) => {
+    setUserStatus(event.target.value);
+
+    const newQuestionStatus = {
+      status: event.target.value,
+      qID,
+      userId,
+    };
+
+    fetch(`http://localhost:8080/non/questionstatus/statusUpdate/${question.questionId}/${userId}`, {
+      method: "PUT",
+      body: JSON.stringify(newQuestionStatus),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    
+    };
+
+    const handleNoteChange = async(event) => {
+      setUserNote(event.target.value);
+  
+      const newQuestionStatus = {
+        status: event.target.value,
+        qID,
+        userId,
+      };
+  
+      fetch(`http://localhost:8080/non/questionstatus/noteUpdate/${question.questionId}/${userId}`, {
+        method: "PUT",
+        body: JSON.stringify(newQuestionStatus),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      
+      };
+
+  return(
+    <>
+                  <th className='border-2' key={question.questionId}>{index+1}</th>
+                  <td className='border-2'>
+                      <select name="" value={userStatus} onChange={(e)=> handleChange(e)} >
+                        <option value="Revisit">Revisit</option>
+                        <option value="Done">Done</option>
+                        <option value="Pending">Pending</option>
+                      </select>
+               
+                  </td>
+                  <td className='border-2 pl-2 pr-2'>{question.questionName}</td>
+                  <td className='border-2 text-center'><Link to={question.questionLink} target="blank"> 🔥 </Link></td>
+                  <td className='border-2'>
+                    <input type='text' value={userNote} onChange={(e)=> handleNoteChange(e)}></input>
+                  </td>
+                  <td className='border-2 pl-2 pr-2'>{question.tags.join(", ")}</td>
+
+    </>
+  )
+}
